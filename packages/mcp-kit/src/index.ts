@@ -70,6 +70,8 @@ export {
   type AuthorizeResult,
   type PaymentRequiredBody,
   type PaymentVerifier,
+  type SelfServe,
+  type VerifyResult,
   type WithPaymentOptions,
 } from "./payment.js";
 export {
@@ -107,3 +109,4 @@ export {
 export { conformanceTools, registerConformanceFixtures } from "./conformance-fixtures.js";
 export type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+export * from "./discovery.js";

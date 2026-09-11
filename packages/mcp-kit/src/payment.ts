@@ -6,9 +6,12 @@
 import {
   StubVerifier,
   buildPaymentRequired,
+  type PaymentRequirement,
   paymentRequiredResponse,
   type PaymentRequiredBody,
   type PaymentVerifier,
+  type SelfServe,
+  type VerifyResult,
 } from "@agentwares/x402";
 import { z } from "zod";
 import { toolError, type McpToolError } from "./errors.js";
@@ -34,8 +37,34 @@ export interface WithPaymentOptions {
   sampleField?: string;
   /** shown in the payment requirement */
   description?: string;
+  /**
+   * Discovery metadata for the x402 `bazaar` extension. Advertised in the 402 so a client can
+   * echo it back; without that echo the facilitator will not catalog the resource, however
+   * many payments settle against it.
+   */
+  bazaar?: Record<string, unknown>;
   payTo?: string;
+  /** prepaid_credits rail: the URL that takes a card and funds a balance */
+  creditsPayTo?: string;
   signupUrl?: string;
+  /** the no-human purchase path, advertised in the 402 body once the card rail is live */
+  selfServe?: SelfServe;
+  /**
+   * Called when a call that was already paid for then fails. A verifier that charges up
+   * front (the prepaid wallet does) uses this to give the money back, so a caller is never
+   * billed for an error. `receipt` is whatever the verifier returned.
+   */
+  onPaidFailure?: (
+    ctx: ToolContext,
+    verified: VerifyResult,
+    error: unknown,
+  ) => Promise<void> | void;
+  /**
+   * The paid work succeeded but the money did not arrive — an on-chain settlement that was
+   * refused or a facilitator that went away. Never throw from here: the buyer has a valid
+   * result and this is our accounting problem, not their failed request.
+   */
+  onSettlementFailure?: (ctx: ToolContext, verified: VerifyResult, reason?: string) => void;
 }
 
 /** A `McpToolError` whose body is the x402 `PaymentRequiredBody` (code `PAYMENT_REQUIRED`). */
@@ -79,7 +108,11 @@ export function withPayment(tool: ToolDef, opts: WithPaymentOptions): ToolDef {
       `withPayment(${tool.name}): input already has a field named ${JSON.stringify(sampleField)}; pass sampleField to rename it`,
     );
   }
-  const verifier = opts.verifier ?? new StubVerifier();
+  const verifier: PaymentVerifier = opts.verifier ?? new StubVerifier();
+  // A verifier that was configured is a rail that can actually be settled, so when it refuses
+  // it knows why ("insufficient credit: $0.00 available, $0.75 needed") and its reason is the
+  // one the caller can act on. Without one, `authorize`'s reason is all there is.
+  const liveRail = opts.verifier !== undefined;
   const input = tool.input.extend({
     [sampleField]: z
       .boolean()
@@ -111,23 +144,59 @@ export function withPayment(tool: ToolDef, opts: WithPaymentOptions): ToolDef {
         reason = auth.reason;
       }
 
+      // A tool name is not a resource. Over HTTP the front door knows the real URL and puts
+      // it on the context; over stdio there is no URL and the name is the best there is.
+      const resource = ctx.resourceUrl ?? tool.name;
       const required = buildPaymentRequired({
-        resource: tool.name,
+        resource,
         priceUsd: opts.priceUsd,
         live: opts.live,
         description: opts.description,
         payTo: opts.payTo,
+        creditsPayTo: opts.creditsPayTo,
         signupUrl: opts.signupUrl,
+        selfServe: opts.selfServe,
+        // withPayment always adds a free `sample` flag to the tool's input schema
+        sampleMode: true,
+        ...(opts.bazaar ? { bazaar: opts.bazaar } : {}),
       });
-      const requirement = required.body.accepts[0];
-      if (requirement) {
-        const verified = await verifier.verify(
-          new Request(`https://mcp.local/${tool.name}`, { headers: ctx.headers }),
-          requirement,
-        );
-        if (verified.ok) return tool.handler(record, ctx);
-        reason = reason ?? verified.reason;
+      // What we advertise and what we accept are separate questions. `accepts` only lists
+      // rails a caller could actually settle, and is empty when none is configured — but a
+      // caller may still present credit or a payment header, so the verifier always runs.
+      // The card rail is checked first because it is the one that can be settled today.
+      const advertised =
+        required.body.accepts.find((a) => a.rail === "prepaid_credits") ?? required.body.accepts[0];
+      const requirement: PaymentRequirement = advertised ?? {
+        rail: "prepaid_credits",
+        amountUsd: String(required.body.priceUsd),
+        resource,
+        ...(opts.description ? { description: opts.description } : {}),
+      };
+      const verified = await verifier.verify(
+        new Request(`https://mcp.local/${tool.name}`, { headers: ctx.headers }),
+        requirement,
+      );
+      if (verified.ok) {
+        let result: Awaited<ReturnType<typeof tool.handler>>;
+        try {
+          result = await tool.handler(record, ctx);
+        } catch (error) {
+          // Rails that already took the money refund here. Rails with a `settle` step have
+          // not taken it yet, and the early return means they never will — the buyer is not
+          // charged for a call that failed.
+          await opts.onPaidFailure?.(ctx, verified, error);
+          throw error;
+        }
+        // The work succeeded, so take the money. A settlement that fails now is lost
+        // revenue, not a failed request: the buyer has already been served, and turning
+        // this into an error would hand them the result *and* a 402.
+        const settled = await verifier.settle?.(verified);
+        if (settled && !settled.ok) {
+          opts.onSettlementFailure?.(ctx, verified, settled.reason);
+        }
+        return result;
       }
+      reason = liveRail ? (verified.reason ?? reason) : (reason ?? verified.reason);
       throw paymentRequiredError(required.body, reason);
     },
   });
@@ -137,4 +206,4 @@ export function withPayment(tool: ToolDef, opts: WithPaymentOptions): ToolDef {
 export const paymentRequiredHttpResponse = paymentRequiredResponse;
 
 export { StubVerifier, buildPaymentRequired };
-export type { PaymentRequiredBody, PaymentVerifier };
+export type { PaymentRequiredBody, PaymentVerifier, SelfServe, VerifyResult };

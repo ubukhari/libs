@@ -4,10 +4,10 @@ import type { FetchLike, ResendLike } from "./channels.js";
 import type { AlertTemplateInput, DriftTemplateInput } from "./templates/index.js";
 
 const alertPayload: AlertTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   targetName: "my-bot",
   checkName: "tools/list",
-  statusUrl: "https://agentcheck.vercel.app/umer/my-bot",
+  statusUrl: "https://status.example.com/acme/my-bot",
   openedAt: "2026-09-01T12:00:00Z",
   error: { code: "TOOL_LIST_EMPTY", cause: "tools/list returned []" },
   transcriptExcerpt: "> tools/list\n< []",
@@ -15,7 +15,7 @@ const alertPayload: AlertTemplateInput = {
 };
 
 const driftPayload: DriftTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   provider: "Anthropic",
   model: "claude-sonnet-5",
   releasedAt: "2026-08-30",
@@ -25,8 +25,8 @@ const driftPayload: DriftTemplateInput = {
     { check: "a", before: "pass", after: "fail", verdict: "regressed" },
     { check: "b", before: "pass", after: "pass", verdict: "unchanged" },
   ],
-  runUrl: "https://agentcheck.vercel.app/umer/my-bot/runs/1",
-  shareUrl: "https://agentcheck.vercel.app/umer/my-bot/runs/1?share=1",
+  runUrl: "https://status.example.com/acme/my-bot/runs/1",
+  shareUrl: "https://status.example.com/acme/my-bot/runs/1?share=1",
 };
 
 interface Call {
@@ -73,7 +73,7 @@ describe("createNotify fan-out", () => {
   it("alert hits each configured channel exactly once and reports per-channel results", async () => {
     const h = harness();
     const notify = createNotify({
-      from: "agentcheck <onboarding@resend.dev>",
+      from: "acme <alerts@example.com>",
       fetch: h.fetch,
       resend: h.resend,
     });
@@ -86,7 +86,7 @@ describe("createNotify fan-out", () => {
 
     expect(h.emails).toHaveLength(1);
     expect(h.emails[0]!.to).toEqual(channels.email);
-    expect(h.emails[0]!.subject).toBe("[agentcheck] FAILING: my-bot · tools/list");
+    expect(h.emails[0]!.subject).toBe("[acme] FAILING: my-bot · tools/list");
     expect(h.emails[0]!.html).toContain("<!DOCTYPE html>");
     expect(h.emails[0]!.text).toContain("tools/list");
 
@@ -97,13 +97,13 @@ describe("createNotify fan-out", () => {
     expect(h.calls).toHaveLength(3);
 
     const slack = JSON.parse(byHost("https://hooks.slack.com/")[0]!.body) as { text: string };
-    expect(slack.text).toContain("[agentcheck] FAILING: my-bot · tools/list");
-    expect(slack.text).toContain("<https://agentcheck.vercel.app/umer/my-bot|Open status page>");
+    expect(slack.text).toContain("[acme] FAILING: my-bot · tools/list");
+    expect(slack.text).toContain("<https://status.example.com/acme/my-bot|Open status page>");
     expect(slack.text).not.toContain("<!DOCTYPE");
 
     const discord = JSON.parse(byHost("https://discord.com/")[0]!.body) as { content: string };
     expect(discord.content).toContain("TOOL_LIST_EMPTY");
-    expect(discord.content).toContain("<https://agentcheck.vercel.app/umer/my-bot>");
+    expect(discord.content).toContain("<https://status.example.com/acme/my-bot>");
     expect(discord.content.length).toBeLessThanOrEqual(2000);
 
     const hook = byHost("https://example.com/hook")[0]!;
@@ -114,7 +114,7 @@ describe("createNotify fan-out", () => {
       subject: string;
     };
     expect(body.event).toBe("alert");
-    expect(body.subject).toBe("[agentcheck] FAILING: my-bot · tools/list");
+    expect(body.subject).toBe("[acme] FAILING: my-bot · tools/list");
     expect(body.data.error.code).toBe("TOOL_LIST_EMPTY");
   });
 
@@ -128,7 +128,7 @@ describe("createNotify fan-out", () => {
     const result = await notify.recovered(
       { slack: channels.slack },
       {
-        productName: "agentcheck",
+        productName: "acme",
         targetName: "t",
         checkName: "c",
         statusUrl: "https://s.test",
@@ -169,7 +169,7 @@ describe("createNotify fan-out", () => {
     const digest = await notify.digest(
       { webhook: { url: "https://example.com/hook" } },
       {
-        productName: "agentcheck",
+        productName: "acme",
         date: "2026-09-01",
         sections: [{ title: "Replay", items: ["ok", "ok"] }],
         decisionsNeeded: ["pick one"],

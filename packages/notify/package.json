@@ -1,6 +1,6 @@
 {
   "name": "@agentwares/notify",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Transactional email (Resend), Slack and Discord webhooks and HMAC-signed generic webhooks from one fan-out call, with plain HTML alert/digest/drift/receipt templates. Web-standard only, so the same code runs on Vercel Functions and Cloudflare Workers.",
   "license": "MIT",
   "type": "module",

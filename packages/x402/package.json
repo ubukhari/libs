@@ -1,6 +1,6 @@
 {
   "name": "@agentwares/x402",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "description": "402 Payment Required for paid HTTP endpoints and MCP tools: build the response with x402 and Stripe MPP payment requirements, a structured code/cause/fix/retryable body, and a pluggable PaymentVerifier. Web-standard, zero Node dependencies.",
   "license": "MIT",
   "type": "module",

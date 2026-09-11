@@ -93,6 +93,17 @@ export interface PricingJsonOptions {
   checkoutUrl?: string;
   portalUrl?: string;
   updatedAt: string | Date;
+  /**
+   * Present when this product is parked or retired. The endpoints keep serving — see
+   * `packages/config/src/lifecycle.ts` — but an agent reads this file as a commitment, and it
+   * deserves to know nobody is maintaining this before it builds on it.
+   */
+  lifecycle?: {
+    stage: string;
+    since: string;
+    reason: string;
+    insteadUrl?: string;
+  };
 }
 
 export interface PricingJson {
@@ -103,6 +114,8 @@ export interface PricingJson {
   meters: PricingMeter[];
   checkoutUrl?: string;
   portalUrl?: string;
+  /** absent while a product is active; see PricingJsonOptions */
+  lifecycle?: { stage: string; since: string; reason: string; insteadUrl?: string };
   /** ISO 8601 */
   updatedAt: string;
 }
@@ -131,5 +144,6 @@ export function pricingJson(opts: PricingJsonOptions): PricingJson {
   };
   if (opts.checkoutUrl !== undefined) json.checkoutUrl = opts.checkoutUrl;
   if (opts.portalUrl !== undefined) json.portalUrl = opts.portalUrl;
+  if (opts.lifecycle !== undefined) json.lifecycle = opts.lifecycle;
   return json;
 }

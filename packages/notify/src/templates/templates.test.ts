@@ -15,10 +15,10 @@ import {
 } from "./index.js";
 
 const XSS = `<script>alert("x")</script>`;
-const STATUS = "https://agentcheck.vercel.app/umer/my-bot";
+const STATUS = "https://status.example.com/acme/my-bot";
 
 const alertInput: AlertTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   targetName: "my-bot",
   checkName: "tools/list",
   statusUrl: STATUS,
@@ -34,7 +34,7 @@ const alertInput: AlertTemplateInput = {
 };
 
 const recoveredInput: RecoveredTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   targetName: "my-bot",
   checkName: "tools/list",
   statusUrl: STATUS,
@@ -42,7 +42,7 @@ const recoveredInput: RecoveredTemplateInput = {
 };
 
 const digestInput: DigestTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   date: "2026-09-01",
   sections: [
     { title: "Replay", items: ["12/12 traces matched baseline"] },
@@ -54,7 +54,7 @@ const digestInput: DigestTemplateInput = {
 };
 
 const driftInput: DriftTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   provider: "Anthropic",
   model: "claude-sonnet-5",
   releasedAt: "2026-08-30T00:00:00Z",
@@ -71,7 +71,7 @@ const driftInput: DriftTemplateInput = {
 };
 
 const receiptInput: ReceiptTemplateInput = {
-  productName: "agentcheck",
+  productName: "acme",
   lines: [
     { description: "Starter plan (Sep 2026)", amountUsd: 29 },
     { description: "Extra targets x2", amountUsd: 16 },
@@ -129,7 +129,7 @@ describe("every template", () => {
 
 describe("alertTemplate", () => {
   it("subject is [product] FAILING: target · check", () => {
-    expect(alertTemplate(alertInput).subject).toBe("[agentcheck] FAILING: my-bot · tools/list");
+    expect(alertTemplate(alertInput).subject).toBe("[acme] FAILING: my-bot · tools/list");
   });
   it("leads with what failed, then transcript, then diff, then status + silence links", () => {
     const { html, text } = alertTemplate(alertInput);
@@ -167,7 +167,7 @@ describe("alertTemplate", () => {
 describe("recoveredTemplate", () => {
   it("names the check and downtime", () => {
     const out = recoveredTemplate(recoveredInput);
-    expect(out.subject).toBe("[agentcheck] RECOVERED: my-bot · tools/list");
+    expect(out.subject).toBe("[acme] RECOVERED: my-bot · tools/list");
     expect(out.html).toContain("back after 17 minutes");
     expect(recoveredTemplate({ ...recoveredInput, downtimeMinutes: 180 }).html).toContain(
       "3 hours",
@@ -178,7 +178,7 @@ describe("recoveredTemplate", () => {
 describe("digestTemplate", () => {
   it("puts decisions needed before the sections and shows cost", () => {
     const { html, subject } = digestTemplate(digestInput);
-    expect(subject).toBe("[agentcheck] Nightly report 2026-09-01: 1 decision needed");
+    expect(subject).toBe("[acme] Nightly report 2026-09-01: 1 decision needed");
     const iDecisions = html.indexOf("Decisions needed");
     const iReplay = html.indexOf("Replay");
     expect(iDecisions).toBeGreaterThan(-1);
@@ -189,7 +189,7 @@ describe("digestTemplate", () => {
   });
   it("omits the decisions block when none are needed", () => {
     const { html, subject } = digestTemplate({ ...digestInput, decisionsNeeded: [] });
-    expect(subject).toBe("[agentcheck] Nightly report 2026-09-01");
+    expect(subject).toBe("[acme] Nightly report 2026-09-01");
     expect(html).not.toContain("Decisions needed");
   });
 });
@@ -197,7 +197,7 @@ describe("digestTemplate", () => {
 describe("driftTemplate", () => {
   it("headline names the model and target; regressed rows come first", () => {
     const { html, subject, text } = driftTemplate(driftInput);
-    expect(subject).toBe("[agentcheck] claude-sonnet-5 shipped: 2 regressions in my-bot");
+    expect(subject).toBe("[acme] claude-sonnet-5 shipped: 2 regressions in my-bot");
     expect(html).toContain("claude-sonnet-5 shipped. Here&#39;s what changed in my-bot.");
     const tbody = html.slice(html.indexOf("<tbody>"), html.indexOf("</tbody>"));
     const order = ["refund-policy", "json-shape", "refusal", "greeting"].map((c) =>
@@ -233,7 +233,7 @@ describe("driftTemplate", () => {
 describe("receiptTemplate", () => {
   it("lists lines, total and the portal link", () => {
     const { html, subject, text } = receiptTemplate(receiptInput);
-    expect(subject).toBe("[agentcheck] Receipt in_123: $45.00");
+    expect(subject).toBe("[acme] Receipt in_123: $45.00");
     expect(html).toContain("Starter plan (Sep 2026)");
     expect(html).toContain("$29.00");
     expect(html).toContain("$16.00");

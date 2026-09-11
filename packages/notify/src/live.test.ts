@@ -16,13 +16,13 @@ describe.skipIf(!LIVE)("live: Resend", () => {
     expect(apiKey, "RESEND_API_KEY must be set for LIVE_TESTS=1").toBeTruthy();
     const notify = createNotify({
       ...(apiKey !== undefined ? { resendApiKey: apiKey } : {}),
-      from: process.env["RESEND_FROM"] ?? "agentcheck <onboarding@resend.dev>",
+      from: process.env["RESEND_FROM"] ?? "acme <onboarding@resend.dev>",
     });
     const rendered = alertTemplate({
-      productName: "agentcheck",
+      productName: "acme",
       targetName: "live-test-target",
       checkName: "tools/list",
-      statusUrl: "https://agentcheck.vercel.app/demo",
+      statusUrl: "https://status.example.com/demo",
       openedAt: new Date(),
       error: { code: "LIVE_TEST", cause: "This is a live delivery test.", fix: "Nothing to do." },
       transcriptExcerpt: "> tools/list\n< []",

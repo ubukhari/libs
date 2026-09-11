@@ -1,0 +1,54 @@
+{
+  "name": "@agentwares/web-bot-auth",
+  "version": "0.1.0",
+  "description": "Web Bot Auth for agents: Ed25519 keys, a signed /.well-known/http-message-signatures-directory, and RFC 9421 HTTP Message Signatures on outbound requests, so Cloudflare can verify your bot. Web Crypto only, no Node built-ins.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentwares/libs",
+    "directory": "packages/web-bot-auth"
+  },
+  "homepage": "https://github.com/agentwares/libs/tree/main/packages/web-bot-auth#readme",
+  "bugs": {
+    "url": "https://github.com/agentwares/libs/issues"
+  },
+  "keywords": [
+    "web-bot-auth",
+    "http-message-signatures",
+    "rfc9421",
+    "ed25519",
+    "cloudflare",
+    "verified-bots",
+    "signature-agent",
+    "ai-agents",
+    "jwks"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run",
+    "keygen": "node scripts/generate-signing-key.mjs"
+  }
+}

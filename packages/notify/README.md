@@ -16,10 +16,10 @@ const notify = createNotify({ resendApiKey: env.RESEND_API_KEY, from: env.RESEND
 await notify.alert(
   { email: ["ops@acme.dev"], slack: user.slackWebhookUrl },
   {
-    productName: "agentcheck",
+    productName: "acme",
     targetName: "support-bot",
     checkName: "refund-policy",
-    statusUrl: "https://agentcheck.vercel.app/acme/support-bot",
+    statusUrl: "https://status.example.com/acme/support-bot",
     openedAt: incident.openedAt,
     error: { code: "RUBRIC_FAIL", cause: "Score 0.41 < 0.7", fix: "Compare the diff below." },
     transcriptExcerpt: result.transcriptExcerpt,

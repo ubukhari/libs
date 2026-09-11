@@ -7,7 +7,7 @@
   "engines": {
     "node": ">=22"
   },
-  "description": "Shared libraries behind the agentwares portfolio: @agentwares/mcp-kit (MCP servers over stdio and Streamable HTTP), @agentwares/notify (email, Slack, Discord, signed webhooks) and @agentwares/x402 (402 Payment Required).",
+  "description": "Shared libraries behind the agentwares portfolio: @agentwares/mcp-kit (MCP servers over stdio and Streamable HTTP), @agentwares/notify (email, Slack, Discord, signed webhooks), @agentwares/x402 (402 Payment Required) and @agentwares/web-bot-auth (Ed25519 request signing for Cloudflare's Verified Bots).",
   "license": "MIT",
   "repository": {
     "type": "git",

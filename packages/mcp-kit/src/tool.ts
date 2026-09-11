@@ -41,6 +41,15 @@ export interface ToolContext {
   sample?: boolean;
   /** set by `withPayment`'s `authorize` when the caller is a known user */
   userId?: string;
+  /**
+   * The public URL this call arrived at, when it arrived over HTTP.
+   *
+   * `withPayment` quotes the tool's *name* as the resource by default, which is right for a
+   * stdio MCP call and wrong for everything a payment facilitator does with it: a discovery
+   * catalog keyed on `realestate_deal_memo` lists something no agent can fetch. An HTTP front
+   * door sets this so settlements are attributed to a URL instead.
+   */
+  resourceUrl?: string;
   /** the request's `_meta` (e.g. `progressToken`) */
   meta?: Record<string, unknown>;
   /** send a log notification to the client (no-op when the transport cannot deliver it) */

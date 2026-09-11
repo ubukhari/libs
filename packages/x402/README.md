@@ -57,7 +57,7 @@ header (JSON) plus its base64 `PAYMENT-REQUIRED` twin, and a body like:
       "maxTimeoutSeconds": 300
     },
     {
-      "rail": "mpp",
+      "rail": "prepaid_credits",
       "amountUsd": "0.05",
       "resource": "/quote",
       "currency": "usd",

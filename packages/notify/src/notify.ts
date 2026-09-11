@@ -54,7 +54,7 @@ export type NotifyEvent = "alert" | "recovered" | "drift" | "digest";
 export interface CreateNotifyOptions {
   /** Resend API key. Omit to get structured `RESEND_API_KEY not configured` failures. */
   resendApiKey?: string;
-  /** From address, e.g. `agentcheck <onboarding@resend.dev>`. */
+  /** From address, e.g. `acme <alerts@example.com>`. */
   from: string;
   replyTo?: string;
   /** Injected fetch for Slack/Discord/webhooks (and Resend REST when no client is given). */
