@@ -72,8 +72,12 @@ export type KeyResolver = (
 ) => Ed25519PublicJwk | undefined | Promise<Ed25519PublicJwk | undefined>;
 
 export interface VerifyOptions {
-  /** The keys to verify against — a JWKS array, or a resolver keyed by thumbprint. */
-  keys: Ed25519PublicJwk[] | KeyResolver;
+  /**
+   * The keys the directory publishes. Raw JWKs, or the `VerifyingKey`s that
+   * `importVerifyingKey` returns — both work, because passing the second and getting
+   * `UNKNOWN_KEY` back is a confusing way to learn about a type mismatch.
+   */
+  keys: Array<Ed25519PublicJwk | VerifyingKey> | KeyResolver;
   /** Seconds since the epoch. Defaults to now. */
   now?: number;
   /** Clock-skew tolerance in seconds. Defaults to 5. */
@@ -448,12 +452,27 @@ function signatureAgentValue(
   }
 }
 
+/**
+ * A `VerifyingKey` carries its JWK, so accept either.
+ *
+ * `importVerifyingKey` is exported, and doing the natural thing — import the key, then hand it
+ * to `verifyRequest` — used to fail with `UNKNOWN_KEY`, which reads as "the directory does not
+ * publish this key" rather than "you passed the wrong shape". Exporting a function whose
+ * output the main entry point rejects is a trap; this closes it.
+ */
+function asJwk(key: Ed25519PublicJwk | VerifyingKey): Ed25519PublicJwk | undefined {
+  if ("publicJwk" in key) return key.publicJwk;
+  return "kty" in key ? key : undefined;
+}
+
 async function resolveKey(
-  keys: Ed25519PublicJwk[] | KeyResolver,
+  keys: Array<Ed25519PublicJwk | VerifyingKey> | KeyResolver,
   keyid: string,
 ): Promise<Ed25519PublicJwk | undefined> {
   if (typeof keys === "function") return keys(keyid);
-  for (const jwk of keys) {
+  for (const entry of keys) {
+    const jwk = asJwk(entry);
+    if (!jwk) continue;
     if (jwk.kid === keyid) return jwk;
     try {
       if ((await jwkThumbprint(jwk)) === keyid) return jwk;

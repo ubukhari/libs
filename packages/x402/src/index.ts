@@ -22,6 +22,8 @@
  * person. An agent that knows MPP and sees `mpp` will attempt MPP semantics and fail, so the
  * name stays free for a real implementation.
  */
+import { USDC_BASE, USDC_EIP712_DOMAIN, toAtomicUnits } from "./facilitator.js";
+
 export type PaymentRail = "x402" | "prepaid_credits";
 
 export interface PaymentRequirement {
@@ -33,8 +35,30 @@ export interface PaymentRequirement {
   description?: string;
   /** x402: network + asset; mpp: currency */
   network?: string;
+  /**
+   * x402: the token's **contract address**, not its symbol.
+   *
+   * It used to be the string "USDC", which no client can act on — a buyer needs the address to
+   * build the EIP-3009 signature. Every catalogued resource in the Bazaar carries an address
+   * here; ours carried a ticker, and that alone made our 402s unpayable by anything but our
+   * own script.
+   */
   asset?: string;
   currency?: string;
+  /**
+   * x402: the settlement scheme. `exact` is the only one defined today, and a client that
+   * does not see it cannot tell which signature to produce.
+   */
+  scheme?: string;
+  /** x402: the price in the token's atomic units, which is what gets signed. */
+  amount?: string;
+  /**
+   * x402: the EIP-712 domain of the asset. Without it a buyer cannot build the typed data and
+   * the facilitator rejects the payment with `invalid_exact_evm_missing_eip712_domain`.
+   */
+  extra?: Record<string, unknown>;
+  /** x402: the media type of what payment buys. */
+  mimeType?: string;
   /** where to pay; absent while payments are not live */
   payTo?: string;
   /** seconds the quote is valid */
@@ -107,6 +131,18 @@ export interface BuildPaymentRequiredOptions {
   payTo?: string;
   /** CAIP-2 chain for the x402 rail; Base mainnet unless the receive address lives elsewhere. */
   network?: string;
+  /** x402 token contract address. Defaults to USDC on Base; set it when the chain differs. */
+  asset?: string;
+  /** EIP-712 domain of that token. Must match the asset or the facilitator rejects the payment. */
+  assetDomain?: Record<string, unknown>;
+  /**
+   * Decimals of that token. Defaults to USDC's six.
+   *
+   * Set it whenever `asset` is set, and set the same value on the verifier. The price is signed
+   * in atomic units, so the wrong decimals do not fail loudly — the 402 quotes an amount off by
+   * a factor of a thousand or a million, and a buyer signs for exactly that.
+   */
+  assetDecimals?: number;
   /** prepaid_credits rail: the URL that takes a card and funds a balance. */
   creditsPayTo?: string;
   signupUrl?: string;
@@ -150,13 +186,26 @@ export function buildPaymentRequired(opts: BuildPaymentRequiredOptions): Payment
   const creditsPayTo = opts.creditsPayTo ?? opts.selfServe?.keysUrl;
   const accepts: PaymentRequirement[] = [];
   if (opts.payTo) {
+    // The fields a standard x402 client needs to construct a payment, in the shape every
+    // catalogued resource in the Bazaar actually serves: `scheme`, the price in atomic units,
+    // the token's contract address and its EIP-712 domain.
+    //
+    // These were missing. The entry carried `amountUsd: "0.02"` and `asset: "USDC"`, which is
+    // readable by a person and unusable by a buyer: no scheme to pick, no atomic amount to
+    // sign, and a ticker where the signature needs an address. Our own bootstrap script filled
+    // the gaps from local knowledge, which is why payments settled in testing and never once
+    // from outside. `rail` and `amountUsd` stay because they are useful and harmless.
     accepts.push({
       rail: "x402",
+      scheme: "exact",
       amountUsd,
+      amount: toAtomicUnits(amountUsd, opts.assetDecimals),
       resource: opts.resource,
       description: opts.description,
+      mimeType: "application/json",
       network: opts.network ?? DEFAULT_X402_NETWORK,
-      asset: "USDC",
+      asset: opts.asset ?? USDC_BASE,
+      extra: opts.assetDomain ?? USDC_EIP712_DOMAIN,
       payTo: opts.payTo,
       maxTimeoutSeconds: 300,
       ...(opts.bazaar ? { bazaar: opts.bazaar } : {}),

@@ -130,12 +130,29 @@ function resolveResend(opts: SendEmailOptions): ResendLike | undefined {
   return new Resend(opts.apiKey);
 }
 
+/**
+ * Domains that can never receive mail: the special-use names of RFC 2606 / RFC 6761 / RFC 6762
+ * (`.test`, `.example`, `.invalid`, `.localhost`, `.local`) and the `example.*` second-level
+ * names. Our demo, soak and dogfood users carry `@agentwares.local`; sending to them bounced
+ * every night (46 of 50 Resend sends, 28 Sep–6 Oct 2026), and a bounce rate like that can get
+ * the sending domain paused, which would silence every customer alert with it.
+ */
+const UNDELIVERABLE =
+  /@(?:[^@\s]+\.)?(?:test|example|invalid|localhost|local)$|@example\.(?:com|net|org)$/i;
+
+/** True when an address can never be delivered to and must not be sent to. */
+export function isUndeliverableAddress(address: string): boolean {
+  return UNDELIVERABLE.test(address.trim().replace(/^.*<([^>]+)>\s*$/, "$1"));
+}
+
 /** Send one transactional email through Resend. Never throws. */
 export async function sendEmail(opts: SendEmailOptions): Promise<SendResult> {
   const client = resolveResend(opts);
   if (!client) return { ok: false, error: "RESEND_API_KEY not configured" };
-  const to = Array.isArray(opts.to) ? opts.to : [opts.to];
-  if (to.length === 0 || to.some((t) => !t.trim())) return { ok: false, error: "no recipient" };
+  const all = Array.isArray(opts.to) ? opts.to : [opts.to];
+  if (all.length === 0 || all.some((t) => !t.trim())) return { ok: false, error: "no recipient" };
+  const to = all.filter((t) => !isUndeliverableAddress(t));
+  if (to.length === 0) return { ok: false, error: "suppressed: reserved test domain, not sent" };
   try {
     const payload: ResendEmailPayload = {
       from: opts.from,

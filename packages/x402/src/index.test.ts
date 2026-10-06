@@ -114,3 +114,70 @@ describe("x402 stub", () => {
     expect(out.reason).toMatch(/not live/);
   });
 });
+
+describe("the 402 a standard client can actually pay", () => {
+  const built = buildPaymentRequired({
+    resource: "https://example.test/v1/thing",
+    priceUsd: 0.02,
+    description: "one thing",
+    payTo: "0x48e7DFa6958E8f71EF5fb417c88CbCA21DA482c5",
+    live: true,
+  });
+  const x402 = built.body.accepts.find((a) => a.rail === "x402")!;
+
+  it("carries every field a buyer needs to build the signature", () => {
+    // Measured against a live catalogued resource in the PayAI Bazaar on 11 September 2026,
+    // whose accepts entry carries exactly these: scheme, network, amount, asset, extra,
+    // payTo, maxTimeoutSeconds. Ours carried amountUsd and the ticker "USDC", which is
+    // readable by a person and unusable by a client.
+    expect(x402.scheme).toBe("exact");
+    expect(x402.network).toBe("eip155:8453");
+    expect(x402.amount).toBe("20000");
+    expect(x402.asset).toBe("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
+    expect(x402.extra).toEqual({ name: "USD Coin", version: "2" });
+    expect(x402.maxTimeoutSeconds).toBe(300);
+  });
+
+  it("still says the price in dollars for whoever reads it", () => {
+    expect(x402.amountUsd).toBe("0.02");
+  });
+
+  it("never advertises the rail without an address to pay", () => {
+    const noAddress = buildPaymentRequired({
+      resource: "https://example.test/v1/thing",
+      priceUsd: 0.02,
+      live: true,
+    });
+    expect(noAddress.body.accepts.some((a) => a.rail === "x402")).toBe(false);
+  });
+});
+
+describe("a token that is not USDC", () => {
+  it("quotes the atomic amount in that token's decimals", () => {
+    // The price is signed in atomic units, so wrong decimals do not fail loudly — the buyer
+    // signs for an amount off by a factor of a thousand or a million.
+    const built = buildPaymentRequired({
+      resource: "https://example.test/v1/thing",
+      priceUsd: 1.5,
+      payTo: "0x48e7DFa6958E8f71EF5fb417c88CbCA21DA482c5",
+      asset: "0x0000000000000000000000000000000000000001",
+      assetDomain: { name: "Some Token", version: "1" },
+      assetDecimals: 18,
+      live: true,
+    });
+    const x402 = built.body.accepts.find((a) => a.rail === "x402")!;
+    expect(x402.amount).toBe("1500000000000000000");
+    expect(x402.asset).toBe("0x0000000000000000000000000000000000000001");
+    expect(x402.extra).toEqual({ name: "Some Token", version: "1" });
+  });
+
+  it("still defaults to USDC's six", () => {
+    const built = buildPaymentRequired({
+      resource: "https://example.test/v1/thing",
+      priceUsd: 1.5,
+      payTo: "0x48e7DFa6958E8f71EF5fb417c88CbCA21DA482c5",
+      live: true,
+    });
+    expect(built.body.accepts.find((a) => a.rail === "x402")!.amount).toBe("1500000");
+  });
+});

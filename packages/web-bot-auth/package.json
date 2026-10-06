@@ -1,6 +1,6 @@
 {
   "name": "@agentwares/web-bot-auth",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Web Bot Auth for agents: Ed25519 keys, a signed /.well-known/http-message-signatures-directory, and RFC 9421 HTTP Message Signatures on outbound requests, so Cloudflare can verify your bot. Web Crypto only, no Node built-ins.",
   "license": "MIT",
   "type": "module",

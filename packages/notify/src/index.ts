@@ -31,6 +31,7 @@ export * from "./templates/index.js";
 
 export {
   sendEmail,
+  isUndeliverableAddress,
   sendSlack,
   sendDiscord,
   sendWebhook,

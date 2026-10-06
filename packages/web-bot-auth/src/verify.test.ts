@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { generateSigningKey, importSigningKey, publicJwkFrom, type SigningKey } from "./keys.js";
+import {
+  generateSigningKey,
+  importSigningKey,
+  importVerifyingKey,
+  publicJwkFrom,
+  type SigningKey,
+} from "./keys.js";
 import { attachSignature, signRequest } from "./sign.js";
 import { verifyRequest, type VerifyResult } from "./verify.js";
 import {
@@ -213,5 +219,30 @@ describe("verifyRequest — multiple signatures", () => {
     expect(failure(await verifyRequest(combined, { keys: [key.publicJwk], label: "b" })).code).toBe(
       "UNKNOWN_KEY",
     );
+  });
+});
+
+describe("keys accepted by verifyRequest", () => {
+  it("takes the VerifyingKey that importVerifyingKey returns", async () => {
+    // Exporting importVerifyingKey and then rejecting its output made the natural usage fail
+    // with UNKNOWN_KEY, which reads as "the directory does not publish this key".
+    const key = await generateSigningKey();
+    const request = new Request("https://origin.test/page");
+    const headers = await signRequest(request, key, { directory: "https://bot.test" });
+    const signed = attachSignature(request, headers);
+
+    const imported = await importVerifyingKey(key.publicJwk);
+    const result = await verifyRequest(signed, { keys: [imported] });
+    expect(result.ok).toBe(true);
+  });
+
+  it("still takes raw JWKs", async () => {
+    const key = await generateSigningKey();
+    const request = new Request("https://origin.test/page");
+    const headers = await signRequest(request, key, { directory: "https://bot.test" });
+    const result = await verifyRequest(attachSignature(request, headers), {
+      keys: [key.publicJwk],
+    });
+    expect(result.ok).toBe(true);
   });
 });

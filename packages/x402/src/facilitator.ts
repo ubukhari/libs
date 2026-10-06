@@ -131,6 +131,14 @@ export interface FacilitatorVerifierOptions {
   /** EIP-712 domain of the asset; defaults to USDC's. Required by the facilitator. */
   assetDomain?: { name: string; version: string };
   /**
+   * Decimals of that asset. Defaults to USDC's six.
+   *
+   * Set it whenever `asset` is set. The price is signed in atomic units, so the wrong decimals
+   * do not fail loudly — they authorise a transfer for the wrong amount, off by a factor of a
+   * thousand or a million in whichever direction hurts.
+   */
+  assetDecimals?: number;
+  /**
    * Envelope to speak to the facilitator. Defaults to 2.
    *
    * Both settle money identically — the buyer's signature is the same either way — but only
@@ -236,7 +244,7 @@ export function createFacilitatorVerifier(
     // Without `extra` the facilitator cannot rebuild the signature and refuses every payment
     // with invalid_exact_evm_missing_eip712_domain.
     const extra = options.assetDomain ?? USDC_EIP712_DOMAIN;
-    const amount = toAtomicUnits(requirement.amountUsd);
+    const amount = toAtomicUnits(requirement.amountUsd, options.assetDecimals);
     const maxTimeoutSeconds = requirement.maxTimeoutSeconds ?? 300;
 
     if (version === 2) {

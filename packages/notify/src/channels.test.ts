@@ -48,7 +48,7 @@ const json = (body: unknown, status = 200) =>
 describe("sendEmail", () => {
   const msg = {
     from: "a <onboarding@resend.dev>",
-    to: "b@example.com",
+    to: "b@customer.dev",
     subject: "s",
     html: "<p>h</p>",
     text: "h",
@@ -74,7 +74,7 @@ describe("sendEmail", () => {
     const r = await sendEmail({ ...msg, resend });
     expect(r).toEqual({ ok: true, id: "em_1", status: 200 });
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toMatchObject({ to: ["b@example.com"], subject: "s" });
+    expect(sent[0]).toMatchObject({ to: ["b@customer.dev"], subject: "s" });
   });
 
   it("maps Resend error responses to ok:false", async () => {
@@ -122,7 +122,7 @@ describe("sendEmail", () => {
       ...msg,
       apiKey: "re_test_key",
       fetch: f.fetch,
-      replyTo: "r@example.com",
+      replyTo: "r@customer.dev",
     });
     expect(r).toEqual({ ok: true, id: "em_2", status: 200 });
     expect(f.calls).toHaveLength(1);
@@ -130,7 +130,11 @@ describe("sendEmail", () => {
     expect(call.url).toBe("https://api.resend.com/emails");
     expect(call.headers["authorization"]).toBe("Bearer re_test_key");
     const body = JSON.parse(call.body) as Record<string, unknown>;
-    expect(body).toMatchObject({ to: ["b@example.com"], subject: "s", reply_to: "r@example.com" });
+    expect(body).toMatchObject({
+      to: ["b@customer.dev"],
+      subject: "s",
+      reply_to: "r@customer.dev",
+    });
   });
 
   it("REST path surfaces provider errors and network failures", async () => {
@@ -276,5 +280,51 @@ describe("sendWebhook", () => {
       ok: false,
       error: "dns",
     });
+  });
+});
+
+describe("reserved test domains are never sent to", () => {
+  it("recognises the special-use domains and leaves real ones alone", async () => {
+    const { isUndeliverableAddress } = await import("./channels.js");
+    for (const a of [
+      "demo@agentwares.local",
+      "soak@agentwares.local",
+      "x@foo.test",
+      "x@example.com",
+      "x@sub.example",
+      "x@host.invalid",
+      "x@localhost",
+      "Demo <demo@agentwares.local>",
+    ]) {
+      expect(isUndeliverableAddress(a), a).toBe(true);
+    }
+    for (const a of [
+      "someone@gmail.com",
+      "ops@agentwares.dev",
+      "a@localnews.com",
+      "a@example-co.com",
+    ]) {
+      expect(isUndeliverableAddress(a), a).toBe(false);
+    }
+  });
+
+  it("does not call Resend when every recipient is reserved, and drops reserved ones from a mix", async () => {
+    const { sendEmail } = await import("./channels.js");
+    const sent: string[][] = [];
+    const resend = {
+      emails: {
+        async send(p: { to: string | string[] }) {
+          sent.push(Array.isArray(p.to) ? p.to : [p.to]);
+          return { data: { id: "e_1" }, error: null };
+        },
+      },
+    };
+    const base = { from: "a <a@b.co>", subject: "s", html: "<p>h</p>", resend };
+    const none = await sendEmail({ ...base, to: "demo@agentwares.local" });
+    expect(none.ok).toBe(false);
+    expect(sent).toHaveLength(0);
+    const mixed = await sendEmail({ ...base, to: ["demo@agentwares.local", "real@gmail.com"] });
+    expect(mixed.ok).toBe(true);
+    expect(sent).toEqual([["real@gmail.com"]]);
   });
 });

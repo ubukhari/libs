@@ -63,7 +63,7 @@ function harness() {
 }
 
 const channels = {
-  email: ["ops@example.com", "dev@example.com"],
+  email: ["ops@customer.dev", "dev@customer.dev"],
   slack: "https://hooks.slack.com/services/T/B/x",
   discord: "https://discord.com/api/webhooks/1/abc",
   webhook: { url: "https://example.com/hook", secret: "whsec_1" },
@@ -73,7 +73,7 @@ describe("createNotify fan-out", () => {
   it("alert hits each configured channel exactly once and reports per-channel results", async () => {
     const h = harness();
     const notify = createNotify({
-      from: "acme <alerts@example.com>",
+      from: "acme <alerts@customer.dev>",
       fetch: h.fetch,
       resend: h.resend,
     });
@@ -154,7 +154,7 @@ describe("createNotify fan-out", () => {
       resend: h.resend,
     });
     const drift = await notify.drift(
-      { discord: channels.discord, email: ["a@example.com"] },
+      { discord: channels.discord, email: ["a@customer.dev"] },
       driftPayload,
     );
     expect(drift.discord?.ok).toBe(true);
@@ -188,10 +188,10 @@ describe("createNotify fan-out", () => {
     const h = harness();
     const notify = createNotify({ from: "x <onboarding@resend.dev>", fetch: h.fetch });
     await expect(
-      notify.email({ to: "a@example.com", subject: "s", html: "<p>x</p>" }),
+      notify.email({ to: "a@customer.dev", subject: "s", html: "<p>x</p>" }),
     ).resolves.toEqual({ ok: false, error: "RESEND_API_KEY not configured" });
     const result = await notify.alert(
-      { email: ["a@example.com"], slack: channels.slack },
+      { email: ["a@customer.dev"], slack: channels.slack },
       alertPayload,
     );
     expect(result.email).toEqual({ ok: false, error: "RESEND_API_KEY not configured" });
@@ -206,7 +206,7 @@ describe("createNotify fan-out", () => {
       from: "x <onboarding@resend.dev>",
       fetch: h.fetch,
     });
-    const r = await notify.email({ to: "a@example.com", subject: "s", html: "<p>x</p>" });
+    const r = await notify.email({ to: "a@customer.dev", subject: "s", html: "<p>x</p>" });
     expect(r.ok).toBe(true);
     expect(h.calls[0]!.url).toBe("https://api.resend.com/emails");
     expect(h.calls[0]!.headers["authorization"]).toBe("Bearer re_test");
