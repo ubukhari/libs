@@ -2,7 +2,8 @@
  * @agentwares/mcp-kit — expose any package as an MCP server: `defineTool` with a naming lint,
  * one codebase served over stdio and Streamable HTTP, `{ code, cause, fix, retryable }` errors,
  * `withPayment` (402 with x402 + MPP), `server.json` + publish workflow, `llms.txt` and
- * `pricing.json` helpers.
+ * `pricing.json` helpers, and `readAllPages` for reading a paginated list (`tools/list`, …) to
+ * its end without looping forever or truncating silently.
  */
 export {
   DEFAULT_HTTP_STATUS,
@@ -110,3 +111,12 @@ export { conformanceTools, registerConformanceFixtures } from "./conformance-fix
 export type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 export * from "./discovery.js";
+export {
+  LIST_MAX_ITEMS,
+  LIST_MAX_PAGES,
+  readAllPages,
+  type ListPage,
+  type ListTruncation,
+  type ReadAllPagesOptions,
+  type ReadAllPagesResult,
+} from "./paging.js";

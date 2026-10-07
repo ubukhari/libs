@@ -1,6 +1,6 @@
 {
   "name": "@agentwares/mcp-kit",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Expose any package as an MCP server: one defineTool definition served over stdio and Streamable HTTP, errors that always carry code/cause/fix/retryable, 402 payment gating, and generators for server.json, llms.txt and pricing.json.",
   "license": "MIT",
   "type": "module",
@@ -10,6 +10,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./paging": {
+      "types": "./dist/paging.d.ts",
+      "import": "./dist/paging.js"
     }
   },
   "files": [
